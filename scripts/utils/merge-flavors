@@ -58,6 +58,9 @@ if __name__ == '__main__':
     if 'architectures' not in base_flavor:
         base_flavor['architectures'] = {}
 
+    if 'packages' not in base_flavor:
+        base_flavor['packages'] = []
+
     flavor_files = sys.argv[2:]
     flavor_defs = map(load_flavor, flavor_files)
 
