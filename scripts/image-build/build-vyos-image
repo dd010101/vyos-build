@@ -63,7 +63,7 @@ except Exception as e:
 # Checkout vyos-1x under build directory
 try:
     branch_name = build_defaults['vyos_branch']
-    url_vyos_1x = 'https://github.com/vyos/vyos-1x'
+    url_vyos_1x = os.getenv('VYOS1X_REPO_URL', default='https://github.com/vyos/vyos-1x')
     path_vyos_1x = os.path.join(defaults.BUILD_DIR, 'vyos-1x')
     try:
         repo_vyos_1x = git.Repo.clone_from(url_vyos_1x, path_vyos_1x, no_checkout=True)
@@ -192,7 +192,7 @@ if __name__ == "__main__":
        'pbuilder-debian-mirror': ('Debian repository mirror for pbuilder env bootstrap', None),
        'vyos-mirror': ('VyOS package mirror', None),
        'build-type': ('Build type, release or development', lambda x: x in ['release', 'development']),
-       'version': ('Version number (release builds only)', None),
+       'version': ('Version string', None),
        'build-comment': ('Optional build comment', None),
        'build-hook-opts': ('Custom options for the post-build hook', None)
     }
@@ -269,19 +269,11 @@ if __name__ == "__main__":
     if pre_build_config['pbuilder_debian_mirror'] is None:
         args['pbuilder_debian_mirror'] = pre_build_config['pbuilder_debian_mirror'] = pre_build_config['debian_mirror']
 
-    # Version can only be set for release builds,
-    # for dev builds it hardly makes any sense
-    if pre_build_config['build_type'] == 'development':
-        if args['version'] is not None:
-            print("E: Version can only be set for release builds")
-            print("Use --build-type=release option if you want to set version number")
-            sys.exit(1)
-
     # Validate characters in version name
-    if 'version' in args and args['version'] != None:
+    if args.get('version'):
         allowed = string.ascii_letters + string.digits + '.' + '-' + '+'
         if not set(args['version']) <= set(allowed):
-            print(f'Version contained illegal character(s), allowed: {allowed}')
+            print(f'Version string contains illegal character(s), allowed: {allowed}')
             sys.exit(1)
 
     ## Inject some useful hardcoded options
@@ -413,8 +405,10 @@ if __name__ == "__main__":
             build_git = ""
             git_branch = ""
 
-        # Create the build version string
-        if build_config['build_type'] == 'development':
+        # Create the build version string, if it's not explicitly given
+        if build_config.get('version'):
+            version = build_config['version']
+        else:
             try:
                 if not git_branch:
                     raise ValueError("git branch could not be determined")
@@ -429,9 +423,6 @@ if __name__ == "__main__":
             except Exception as e:
                 print("W: Could not build a version string specific to git branch, falling back to default: {0}".format(str(e)))
                 version = "999.{0}".format(build_timestamp)
-        else:
-            # Release build, use the version from ./configure arguments
-            version = build_config['version']
 
         version_data = {
             'version': version,
@@ -674,7 +665,7 @@ Pin-Priority: 600
     # If not, build additional flavors from the ISO.
     if build_config["image_format"] != ["iso"]:
         # For all non-iso formats, we always build a raw image first
-        raw_image = raw_image.create_raw_image(build_config, iso_file, "tmp/")
+        version_data, raw_image = raw_image.create_raw_image(build_config, iso_file, "tmp/")
         manifest['artifacts'].append(raw_image)
 
         # If there are other formats in the flavor, the assumptions is that
@@ -704,8 +695,10 @@ Pin-Priority: 600
                 hook_opts = build_config["build_hook_opts"]
             else:
                 hook_opts = ""
-            custom_image = rc_cmd(f"./build_hook {raw_image} {build_config['version']} \
-              {build_config['architecture']} {hook_opts}")
+            build_hook_command = f"./build_hook {raw_image} {version_data['version']} \
+              {build_config['architecture']} {hook_opts}"
+            print(f'I: executing build hook command: {build_hook_command}')
+            custom_image = rc_cmd(build_hook_command)
             manifest['artifacts'].append(custom_image)
 
     # Filter out unwanted files from the artifact list

@@ -210,4 +210,4 @@ def create_raw_image(build_config, iso_file, work_dir):
         install_image(con, version)
         install_grub(con, version)
 
-        return raw_file
+        return (version_data, raw_file)
