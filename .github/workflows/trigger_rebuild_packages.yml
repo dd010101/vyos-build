@@ -78,6 +78,8 @@ jobs:
               - 'scripts/package-build/radvd/**'
             strongswan:
               - 'scripts/package-build/strongswan/**'
+            tacacs:
+              - 'scripts/package-build/tacacs/**'
             telegraf:
               - 'scripts/package-build/telegraf/**'
             waagent:
@@ -209,6 +211,10 @@ jobs:
 
           if [ "${{ steps.changes.outputs.strongswan }}" == "true" ]; then
             trigger_build "strongswan"
+          fi
+
+          if [ "${{ steps.changes.outputs.tacacs }}" == "true" ]; then
+            trigger_build "tacacs"
           fi
 
           if [ "${{ steps.changes.outputs.telegraf }}" == "true" ]; then
