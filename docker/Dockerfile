@@ -358,6 +358,8 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get update
 # For owamp
 RUN apt-get install -y dh-apparmor dh-exec libcap-dev
+# For vyos-xe-guest-utilities
+RUN apt-get install -y golang gawk
 
 # Allow password-less 'sudo' for all users in group 'sudo'
 RUN sed "s/^%sudo.*/%sudo\tALL=(ALL) NOPASSWD:ALL/g" -i /etc/sudoers && \
